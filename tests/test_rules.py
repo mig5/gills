@@ -83,9 +83,7 @@ def test_downgrade_and_removal(config):
     w["events"].append("package.removed")
     assert changes([pkg("2")], [pkg("1")], w)[0]["type"] == "package.downgraded"
     assert changes([pkg("2")], [], w)[0]["type"] == "package.removed"
-    assert all(
-        e["type"] != "package.removed" for e in changes([pkg("1")], [pkg("2")], w)
-    )
+    assert all(e["type"] != "package.removed" for e in changes([pkg("1")], [pkg("2")], w))
 
 
 def test_older_version_added_to_multiversion_repo(config):

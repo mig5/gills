@@ -68,9 +68,7 @@ def test_mixed_dns_rejected_before_connect(monkeypatch, address):
 
 
 def test_dns_is_resolved_once_and_socket_is_pinned(monkeypatch):
-    resolver = Mock(
-        return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))]
-    )
+    resolver = Mock(return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("8.8.8.8", 443))])
     sock = Mock()
     monkeypatch.setattr(socket, "getaddrinfo", resolver)
     monkeypatch.setattr(socket, "socket", Mock(return_value=sock))
@@ -102,16 +100,12 @@ def test_redirect_policy_and_credential_stripping():
     )
     with pytest.raises(GillsError):
         handler.redirect_request(req, None, 302, "redirect", {}, "http://example.org/b")
-    redirected = handler.redirect_request(
-        req, None, 302, "redirect", {}, "https://other.example/b"
-    )
+    redirected = handler.redirect_request(req, None, 302, "redirect", {}, "https://other.example/b")
     assert not redirected.has_header("Authorization")
     assert not redirected.has_header("X-key")
     post = urllib.request.Request("https://example.org/a", data=b"{}")
     with pytest.raises(GillsError, match="redirects"):
-        handler.redirect_request(
-            post, None, 302, "redirect", {}, "https://example.org/b"
-        )
+        handler.redirect_request(post, None, 302, "redirect", {}, "https://example.org/b")
 
 
 def test_private_redirect_connection_is_checked(config, monkeypatch):
@@ -130,9 +124,7 @@ def test_private_redirect_connection_is_checked(config, monkeypatch):
 def test_proxy_environment_ignored(config, monkeypatch):
     monkeypatch.setenv("https_proxy", "http://127.0.0.1:1")
     client = Client(config, config["state_dir"])
-    assert not any(
-        isinstance(h, urllib.request.ProxyHandler) for h in client.opener.handlers
-    )
+    assert not any(isinstance(h, urllib.request.ProxyHandler) for h in client.opener.handlers)
 
 
 @pytest.mark.parametrize(
@@ -171,9 +163,7 @@ def test_tls_certificate_and_hostname_verification(config, monkeypatch):
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        client = Client(
-            config, config["state_dir"], policy={"allow_private_networks": True}
-        )
+        client = Client(config, config["state_dir"], policy={"allow_private_networks": True})
         with pytest.raises(GillsError):
             client.open(f"https://localhost:{server.server_port}/")
         original = ssl.create_default_context

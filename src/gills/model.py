@@ -35,9 +35,7 @@ class Package:
 
     @property
     def slot(self):
-        return canonical(
-            [self.suite, self.component, self.kind, self.name, self.architecture]
-        )
+        return canonical([self.suite, self.component, self.kind, self.name, self.architecture])
 
     @property
     def identity(self):
@@ -53,9 +51,7 @@ class Package:
 
     @classmethod
     def from_dict(cls, data):
-        return cls(
-            **{**data, "artifacts": tuple(Artifact(**a) for a in data["artifacts"])}
-        )
+        return cls(**{**data, "artifacts": tuple(Artifact(**a) for a in data["artifacts"])})
 
 
 @dataclass

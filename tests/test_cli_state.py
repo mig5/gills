@@ -105,9 +105,7 @@ def test_only_check_and_prune_are_commands():
 
     from gills.cli import parser
 
-    commands = next(
-        a for a in parser()._actions if isinstance(a, argparse._SubParsersAction)
-    )
+    commands = next(a for a in parser()._actions if isinstance(a, argparse._SubParsersAction))
     assert set(commands.choices) == {"check", "prune"}
 
 
@@ -120,9 +118,7 @@ def test_dry_run_creates_no_state_or_notifications(repo, tmp_path, monkeypatch, 
         tmp_path / "preview.yml",
         repo,
         state_dir,
-        destinations={
-            "hook": {"type": "webhook", "url": "https://example.invalid/unused"}
-        },
+        destinations={"hook": {"type": "webhook", "url": "https://example.invalid/unused"}},
     )
 
     def forbidden(*args, **kwargs):
@@ -136,9 +132,7 @@ def test_dry_run_creates_no_state_or_notifications(repo, tmp_path, monkeypatch, 
     assert not list(tmp_path.rglob("*.sqlite3"))
 
 
-def test_check_implicitly_delivers_and_honours_notify(
-    repo, tmp_path, monkeypatch, capsys
-):
+def test_check_implicitly_delivers_and_honours_notify(repo, tmp_path, monkeypatch, capsys):
     from gills import notify
 
     repo["publish"]()
@@ -147,9 +141,7 @@ def test_check_implicitly_delivers_and_honours_notify(
         repo,
         tmp_path / "state",
         notify=False,
-        destinations={
-            "hook": {"type": "webhook", "url": "https://example.invalid/unused"}
-        },
+        destinations={"hook": {"type": "webhook", "url": "https://example.invalid/unused"}},
     )
     sent = []
     monkeypatch.setattr(notify, "send", lambda d, b, c: sent.append(b))
@@ -180,9 +172,7 @@ def test_disabled_destination_pauses_existing_retry(repo, config, monkeypatch):
     monkeypatch.setattr(notify, "send", fail)
     assert notify.dispatch(state, config, 100)["failed_batches"] == 1
     config["destinations"]["hook"]["enabled"] = False
-    monkeypatch.setattr(
-        notify, "send", lambda *args: pytest.fail("disabled delivery attempted")
-    )
+    monkeypatch.setattr(notify, "send", lambda *args: pytest.fail("disabled delivery attempted"))
     assert notify.dispatch(state, config, 200)["failed_batches"] == 0
 
 

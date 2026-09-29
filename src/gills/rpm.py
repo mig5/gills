@@ -4,7 +4,7 @@ import io
 
 from defusedxml import ElementTree as ET
 
-from .model import Artifact, IntegrityError, Package, Snapshot, GillsError
+from .model import Artifact, GillsError, IntegrityError, Package, Snapshot
 from .transport import decompress, repository_url
 
 R = "{http://linux.duke.edu/metadata/repo}"
@@ -24,9 +24,7 @@ def scan(watch, client):
         primary.find(R + "size"),
     )
     if location is None or checksum is None or checksum.get("type") != "sha256":
-        raise IntegrityError(
-            "RPM primary metadata requires location and SHA256 checksum"
-        )
+        raise IntegrityError("RPM primary metadata requires location and SHA256 checksum")
     path = location.attrib["href"]
     payload = client.fetch(
         repository_url(watch["url"], path),

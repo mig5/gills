@@ -45,23 +45,17 @@ class State:
                 self._open(memory, copy_from)
 
     def _open(self, memory, copy_from):
-        self.db = sqlite3.connect(
-            ":memory:" if memory else self.root / "gills.sqlite3", timeout=30
-        )
+        self.db = sqlite3.connect(":memory:" if memory else self.root / "gills.sqlite3", timeout=30)
         if copy_from is not None and Path(copy_from).is_file():
             # Read the real baseline without opening it for schema setup or writes.
-            source = sqlite3.connect(
-                Path(copy_from).resolve().as_uri() + "?mode=ro", uri=True
-            )
+            source = sqlite3.connect(Path(copy_from).resolve().as_uri() + "?mode=ro", uri=True)
             try:
                 source.backup(self.db)
             finally:
                 source.close()
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
-        self.db.execute(
-            "PRAGMA journal_mode=MEMORY" if memory else "PRAGMA journal_mode=WAL"
-        )
+        self.db.execute("PRAGMA journal_mode=MEMORY" if memory else "PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
         if version not in (0, 1, 2):
@@ -69,9 +63,7 @@ class State:
         if version == 1:
             with self.db:
                 self.db.execute("BEGIN IMMEDIATE")
-                columns = {
-                    row[1] for row in self.db.execute("PRAGMA table_info(watches)")
-                }
+                columns = {row[1] for row in self.db.execute("PRAGMA table_info(watches)")}
                 if "signers" in columns:
                     # Older distro SQLite libraries lack ALTER TABLE DROP COLUMN.
                     # Rebuild inside this transaction, preserving all baseline/health fields.
@@ -102,9 +94,7 @@ class State:
                     "SELECT id,payload FROM batches WHERE state='pending'"
                 ).fetchall():
                     batch = json.loads(row["payload"])
-                    retained = [
-                        e for e in batch["events"] if e["type"] != "signer.changed"
-                    ]
+                    retained = [e for e in batch["events"] if e["type"] != "signer.changed"]
                     if len(retained) != len(batch["events"]):
                         # Requeue other events instead of changing a previously attempted batch body.
                         self.db.execute(
@@ -154,9 +144,7 @@ class State:
     def route(self, event, config):
         if not config.get("notify", True):
             return
-        watch = next(
-            (w for w in config["watches"] if w["name"] == event["watch"]), None
-        )
+        watch = next((w for w in config["watches"] if w["name"] == event["watch"]), None)
         if watch is None:
             return
         for name in set(watch.get("destinations", [])):
@@ -229,9 +217,7 @@ class State:
                 "SELECT destination,state,count(*) AS count FROM deliveries GROUP BY destination,state"
             )
         ]
-        waiting = self.db.execute(
-            "SELECT count(*) FROM events WHERE state='waiting'"
-        ).fetchone()[0]
+        waiting = self.db.execute("SELECT count(*) FROM events WHERE state='waiting'").fetchone()[0]
         return {"watches": watches, "deliveries": deliveries, "waiting": waiting}
 
 
@@ -241,9 +227,7 @@ def lock_directory(root):
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise GillsError(
-                "Another gills process is using this state directory"
-            ) from exc
+            raise GillsError("Another gills process is using this state directory") from exc
         try:
             yield
         finally:

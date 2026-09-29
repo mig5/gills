@@ -37,9 +37,7 @@ def test_independent_retries(repo, config, monkeypatch):
     }
     assert len(calls) == 2
     assert notify.dispatch(state, config, 110)["failed_batches"] == 0
-    error = state.db.execute(
-        "SELECT last_error FROM batches WHERE state='pending'"
-    ).fetchone()[0]
+    error = state.db.execute("SELECT last_error FROM batches WHERE state='pending'").fetchone()[0]
     assert "private secret" not in error
     monkeypatch.setattr(
         notify,
@@ -174,9 +172,7 @@ def test_watch_routes_only_to_selected_destinations(repo, config, monkeypatch):
     second = copy.deepcopy(first)
     second.update(name="other", destinations=["two"])
     config["watches"].append(second)
-    config["destinations"] = {
-        name: {"type": "stdout"} for name in ["one", "two", "unused"]
-    }
+    config["destinations"] = {name: {"type": "stdout"} for name in ["one", "two", "unused"]}
     state = State(config["state_dir"])
     repo["publish"]()
     for watch in config["watches"]:

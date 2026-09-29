@@ -71,23 +71,15 @@ def send(destination, batch, config):
                 )
             refused = smtp.send_message(message)
             if refused:
-                raise GillsError(
-                    "SMTP refused one or more recipients; batch will retry"
-                )
+                raise GillsError("SMTP refused one or more recipients; batch will retry")
         return
-    target = (
-        secret(destination["url_env"])
-        if destination.get("url_env")
-        else destination["url"]
-    )
+    target = secret(destination["url_env"]) if destination.get("url_env") else destination["url"]
     headers = headers_from_env(destination.get("headers_env"))
     if kind == "slack":
         # Plain text blocks prevent untrusted repository strings becoming mentions.
         payload = {
             "text": f"Gills: {len(batch['events'])} repository event(s)",
-            "blocks": [
-                {"type": "section", "text": {"type": "plain_text", "text": body[:2900]}}
-            ],
+            "blocks": [{"type": "section", "text": {"type": "plain_text", "text": body[:2900]}}],
         }
     elif kind == "signal":
         payload = {
@@ -98,9 +90,7 @@ def send(destination, batch, config):
     else:
         payload = batch
     raw = canonical(payload).encode()
-    headers.update(
-        {"Content-Type": "application/json", "X-Gills-Delivery": batch["id"]}
-    )
+    headers.update({"Content-Type": "application/json", "X-Gills-Delivery": batch["id"]})
     if destination.get("secret_env"):
         signature = hmac.new(
             secret(destination["secret_env"]).encode(), raw, hashlib.sha256
@@ -126,10 +116,7 @@ def dispatch(state, config, now=None):
                 "SELECT e.payload,e.ready_at FROM deliveries d JOIN events e ON e.id=d.event_id WHERE d.destination=? AND d.state='pending' AND d.batch_id IS NULL AND e.state='ready' AND e.ready_at<=? ORDER BY e.ready_at,e.id LIMIT 100",
                 (name, now),
             ).fetchall()
-            if (
-                not rows
-                or rows[0]["ready_at"] + destination.get("digest_seconds", 0) > now
-            ):
+            if not rows or rows[0]["ready_at"] + destination.get("digest_seconds", 0) > now:
                 continue
             if not destination.get("digest_seconds"):
                 groups = [[row] for row in rows]

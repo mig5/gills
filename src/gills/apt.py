@@ -7,7 +7,7 @@ import re
 
 from debian.deb822 import Deb822
 
-from .model import Artifact, IntegrityError, Package, Snapshot, GillsError
+from .model import Artifact, GillsError, IntegrityError, Package, Snapshot
 from .transport import FetchError, decompress, repository_url
 
 
@@ -20,22 +20,16 @@ def release_text(data):
         _, content = data.split(b"\n\n", 1)
         body, _ = content.split(b"\n-----BEGIN PGP SIGNATURE-----", 1)
     except ValueError as exc:
-        raise IntegrityError(
-            "Malformed InRelease: missing cleartext boundaries"
-        ) from exc
+        raise IntegrityError("Malformed InRelease: missing cleartext boundaries") from exc
     return (
-        b"\n".join(
-            line[2:] if line.startswith(b"- ") else line for line in body.split(b"\n")
-        )
+        b"\n".join(line[2:] if line.startswith(b"- ") else line for line in body.split(b"\n"))
         + b"\n"
     )
 
 
 def paragraphs(data):
     try:
-        yield from Deb822.iter_paragraphs(
-            io.StringIO(data.decode("utf-8")), use_apt_pkg=False
-        )
+        yield from Deb822.iter_paragraphs(io.StringIO(data.decode("utf-8")), use_apt_pkg=False)
     except (UnicodeError, ValueError) as exc:
         raise IntegrityError("Malformed Debian metadata") from exc
 
@@ -72,9 +66,7 @@ def validate_date(release, watch, now=None):
                 raise IntegrityError("Repository metadata is dated in the future")
             age = watch.get("max_release_age_seconds", 0)
             if age and (now - value).total_seconds() > age:
-                raise IntegrityError(
-                    "Repository metadata exceeds max_release_age_seconds"
-                )
+                raise IntegrityError("Repository metadata exceeds max_release_age_seconds")
     if watch.get("max_release_age_seconds") and "Date" not in release:
         raise IntegrityError("Release lacks Date required for age checking")
 
@@ -117,9 +109,7 @@ def packages(data, base, suite, component, kind):
                 )
             )
         else:
-            source = re.fullmatch(
-                r"([^\s()]+)(?:\s+\(([^()]+)\))?", stanza.get("Source", name)
-            )
+            source = re.fullmatch(r"([^\s()]+)(?:\s+\(([^()]+)\))?", stanza.get("Source", name))
             if not source:
                 raise IntegrityError("Invalid binary Source field")
             for field in ("Architecture", "Filename", "SHA256", "Size"):
