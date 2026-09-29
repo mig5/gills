@@ -1,0 +1,91 @@
+#!/bin/bash
+
+set -eo pipefail
+
+# Clean caches etc
+filedust -y .
+
+# Publish to Pypi
+poetry build
+
+# Make AppImage
+poetry run pyproject-appimage --output dist/Gills.AppImage
+
+# Sign packages
+for file in `ls -1 dist/`; do qubes-gpg-client --batch  --armor --detach-sign dist/$file > dist/$file.asc; done
+
+# Deb stuff
+DISTS=(
+  debian:trixie
+  ubuntu:noble
+)
+
+for dist in ${DISTS[@]}; do
+  release=$(echo ${dist} | cut -d: -f2)
+  mkdir -p dist/${release}
+
+  docker build -f Dockerfile.debbuild -t gills-deb:${release} \
+    --no-cache \
+    --progress=plain \
+    --build-arg BASE_IMAGE=${dist} .
+
+  docker run --rm \
+    -e SUITE="${release}" \
+    -v "$PWD":/src \
+    -v "$PWD/dist/${release}":/out \
+    gills-deb:${release}
+
+  debfile=$(ls -1 dist/${release}/*.deb)
+  reprepro -b /home/user/git/repo includedeb "${release}" "${debfile}"
+done
+
+# RPM
+sudo apt-get -y install createrepo-c rpm
+BUILD_OUTPUT="${HOME}/git/gills/dist"
+KEYID="54A91143AE0AB4F7743B01FE888ED1B423A3BC99"
+REPO_ROOT="${HOME}/git/repo_rpm"
+REMOTE="ashpool.mig5.net:/opt/repo_rpm"
+
+DISTS=(
+  fedora:43
+)
+
+for dist in ${DISTS[@]}; do
+  release=$(echo ${dist} | cut -d: -f2)
+  REPO_RELEASE_ROOT="${REPO_ROOT}/${release}"
+  RPM_REPO="${REPO_RELEASE_ROOT}/rpm/x86_64"
+  mkdir -p "$RPM_REPO"
+
+  docker build \
+    --no-cache \
+    -f Dockerfile.rpmbuild \
+    -t gills-rpm:${release} \
+    --progress=plain \
+    --build-arg BASE_IMAGE=${dist} \
+    .
+
+  rm -rf "$PWD/dist/rpm"/*
+  mkdir -p "$PWD/dist/rpm"
+
+  docker run --rm -v "$PWD":/src -v "$PWD/dist/rpm":/out gills-rpm:${release}
+  sudo chown -R "${USER}" "$PWD/dist"
+
+  for file in `ls -1 "${BUILD_OUTPUT}/rpm"`; do
+    rpmsign --addsign "${BUILD_OUTPUT}/rpm/$file"
+  done
+
+  cp "${BUILD_OUTPUT}/rpm/"*.rpm "$RPM_REPO/"
+
+  createrepo_c "$RPM_REPO"
+
+  echo "==> Signing repomd.xml..."
+  qubes-gpg-client --local-user "$KEYID" --detach-sign --armor "$RPM_REPO/repodata/repomd.xml" > "$RPM_REPO/repodata/repomd.xml.asc"
+done
+
+# If we got this far, publish to Poetry too
+poetry publish
+
+echo "==> Syncing repo to server..."
+rsync -aHPvz --exclude=.git --delete "$REPO_ROOT/" "$REMOTE/"
+
+echo "Done!"

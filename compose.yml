@@ -1,0 +1,17 @@
+services:
+  gills:
+    build: .
+    init: true
+    volumes:
+      - ./config.yml:/etc/gills/gills.yml:ro
+      - gills-state:/var/lib/gills
+    # Add env_file: .env when using notification secrets.
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    stop_grace_period: 60s
+volumes:
+  gills-state:

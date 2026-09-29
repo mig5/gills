@@ -1,0 +1,89 @@
+# syntax=docker/dockerfile:1
+ARG BASE_IMAGE=fedora:42
+FROM ${BASE_IMAGE}
+
+RUN set -eux; \
+    dnf -y update; \
+    dnf -y install \
+        rpm-build \
+        rpmdevtools \
+        redhat-rpm-config \
+        gcc \
+        make \
+        findutils \
+        tar \
+        gzip \
+        rsync \
+        python3 \
+        python3-devel \
+        python3-setuptools \
+        python3-wheel \
+        pyproject-rpm-macros \
+        python3-rpm-macros \
+        python3-yaml \
+        python3-debian \
+        python3-defusedxml \
+        python3-zstandard \
+        openssl-devel \
+        python3-poetry-core ; \
+        dnf -y clean all
+
+# Build runner script (copies repo, tars, runs rpmbuild)
+RUN set -eux;   cat > /usr/local/bin/build-rpm <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+SRC="${SRC:-/src}"
+WORKROOT="${WORKROOT:-/work}"
+OUT="${OUT:-/out}"
+VERSION_ID="$(grep VERSION_ID /etc/os-release | cut -d= -f2)"
+echo "Version ID is ${VERSION_ID}"
+
+mkdir -p "${WORKROOT}" "${OUT}"
+WORK="${WORKROOT}/src"
+rm -rf "${WORK}"
+mkdir -p "${WORK}"
+
+rsync -a --delete \
+  --exclude '.git' \
+  --exclude '.venv' \
+  --exclude 'dist' \
+  --exclude 'build' \
+  --exclude '__pycache__' \
+  --exclude '.pytest_cache' \
+  --exclude '.mypy_cache' \
+  "${SRC}/" "${WORK}/"
+
+cd "${WORK}"
+
+# Determine version from pyproject.toml unless provided
+if [ -n "${VERSION:-}" ]; then
+  ver="${VERSION}"
+else
+  ver="$(grep -m1 '^version = ' pyproject.toml | sed -E 's/version = "([^"]+)".*/\1/')"
+fi
+
+TOPDIR="${WORKROOT}/rpmbuild"
+mkdir -p "${TOPDIR}"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
+
+tarball="${TOPDIR}/SOURCES/gills-${ver}.tar.gz"
+tar -czf "${tarball}" --transform "s#^#gills/#" .
+
+spec_src="rpm/gills.spec"
+
+cp -v "${spec_src}" "${TOPDIR}/SPECS/gills.spec"
+
+rpmbuild -ba "${TOPDIR}/SPECS/gills.spec" \
+  --define "_topdir ${TOPDIR}" \
+  --define "gills_version ${ver}"
+
+shopt -s nullglob
+cp -v "${TOPDIR}"/RPMS/*/*.rpm "${OUT}/" || true
+cp -v "${TOPDIR}"/SRPMS/*.src.rpm "${OUT}/" || true
+echo "Artifacts copied to ${OUT}"
+EOF
+
+RUN chmod +x /usr/local/bin/build-rpm
+
+WORKDIR /work
+ENTRYPOINT ["/usr/local/bin/build-rpm"]

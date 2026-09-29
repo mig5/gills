@@ -1,0 +1,11 @@
+[Unit]
+Description=Check upstream repositories every thirty minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=30min
+RandomizedDelaySec=30s
+Unit=gills.service
+
+[Install]
+WantedBy=timers.target

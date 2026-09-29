@@ -1,0 +1,67 @@
+# Configuration format version, independent of the application version.
+version: 1
+# SQLite baseline and notification history; relative to this YAML file.
+state_dir: ./state
+# Queue and deliver notifications during check. false also pauses pending retries.
+notify: true
+
+# Each watch selects a repository and the packages to track within it.
+watches:
+  # Stable, unique identifier used in stored state and notification routing.
+  - name: sury-php
+    # Repository format: apt for Debian-style repositories, rpm for RPM-MD.
+    type: apt
+    # Names from the top-level destinations mapping, e.g. [builds, email].
+    # Empty or omitted means no notifications for this watch.
+    destinations: []
+    # Secure defaults: HTTPS with validated certificates and public IP addresses.
+    # Enable private/LAN/loopback repositories only for this watch if required.
+    allow_private_networks: false
+    # Separate opt-in for plain HTTP; HTTPS certificates are always validated.
+    allow_http: false
+    # Repository root containing dists/, rather than a particular index file.
+    url: https://packages.sury.org/php/
+    # Debian/Ubuntu distribution suites to inspect; multiple suites are allowed.
+    suites: [trixie]
+    # Repository sections within each suite, such as main or contrib.
+    components: [main]
+    # Binary architectures to inspect, including for the readiness gate below.
+    architectures: [amd64]
+    # Track source packages. Use [binary] or [source, binary] for binary events.
+    kinds: [source]
+    # All supplied filter rules must match; entries within a list are alternatives.
+    filters:
+      # Source package names or case-sensitive globs. Omit to include all sources.
+      sources: ['php7.4', 'php8.0', 'php8.1', 'php8.2', 'php8.3', 'php8.4']
+      # Part tested by version_include/version_exclude regexes: full (default)
+      # or upstream. For 2:8.4.1-3, upstream is 8.4.1; full includes epoch/revision.
+      # Vendor suffixes within the upstream component are retained.
+      version_field: upstream
+      # Python regex: (?i) ignores case; reject versions containing alpha, beta or rc.
+      version_exclude: '(?i)(?:alpha|beta|rc)'
+    # Which version transitions produce events: any, upstream or packaging.
+    # 8.4.1-1 -> 8.4.2-1 is upstream; 8.4.1-1 -> 8.4.1-2 is packaging.
+    # This is independent of the regex field above; epoch changes count as upstream.
+    version_policy: any
+    # false quietly records the first baseline, without notifying.
+    # true also announces existing matching packages on that first check.
+    notify_initial: false
+    # Combine events with the same event type, source name and exact source version.
+    group_by_source: true
+    # Delay events until the same source version has the required indexed binaries.
+    # Requirements are rechecked on subsequent check invocations, without a daemon.
+    readiness:
+      # Require the matching source version to appear in the source index too.
+      require_source: true
+      # Each glob must match a binary from that exact source name/version.
+      binaries: ['php*-cli']
+      # Require those binaries for every listed architecture; arch all qualifies.
+      # Suites default to the watch's suites above.
+      architectures: [amd64]
+      # Alert once after this waiting time; keep waiting for a later successful check.
+      timeout_seconds: 3600
+
+# Named notification destinations (email, webhook, slack, signal or stdout).
+# Empty means no delivery targets; check still prints results and saves its baseline.
+# See destinations.yml for examples to place under this key.
+destinations: {}

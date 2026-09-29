@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+state*/
+.env
+upstream.yml
+keys/
+
+.coverage
+htmlcov/
+*.sqlite3
+*.lock

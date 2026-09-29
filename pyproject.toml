@@ -1,0 +1,85 @@
+[build-system]
+requires = ["poetry-core>=1.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[project]
+name = "gills"
+version = "0.1.0"
+description = "Watch APT and RPM repositories for package changes"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-or-later"
+authors = [{name = "Miguel Jacq", email = "mig@mig5.net"}]
+dependencies = [
+  "PyYAML>=5.4,<7",
+  "python-debian>=0.1.43,<2",
+  "defusedxml>=0.7.1,<1",
+  "zstandard>=0.15,<1",
+]
+
+[project.urls]
+Repository = "https://git.mig5.net/mig5/gills"
+
+[project.scripts]
+gills = "gills.cli:main"
+
+[tool.poetry]
+name = "gills"
+version = "0.1.0"
+description = "Watch APT and RPM repositories for package changes"
+authors = ["Miguel Jacq <mig@mig5.net>"]
+readme = "README.md"
+license = "GPL-3.0-or-later"
+homepage = "https://git.mig5.net/mig5/gills"
+repository = "https://git.mig5.net/mig5/gills"
+packages = [{include = "gills", from = "src"}]
+include = [
+  {path = "assets", format = "sdist"},
+  {path = "examples", format = "sdist"},
+  {path = "docs", format = "sdist"},
+  {path = "packaging", format = "sdist"},
+  {path = "tests", format = "sdist"},
+  {path = "debian", format = "sdist"},
+  {path = "rpm", format = "sdist"},
+  {path = "release.sh", format = "sdist"},
+  {path = "tests.sh", format = "sdist"},
+  {path = ".forgejo", format = "sdist"},
+  {path = "Dockerfile*", format = "sdist"},
+  {path = "compose.yml", format = "sdist"},
+  {path = "CHANGELOG.md", format = "sdist"},
+]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+PyYAML = ">=5.4,<7"
+python-debian = ">=0.1.43,<2"
+defusedxml = ">=0.7.1,<1"
+zstandard = ">=0.15,<1"
+
+[tool.poetry.scripts]
+gills = "gills.cli:main"
+
+[tool.poetry.dev-dependencies]
+pytest = ">=8,<9"
+pytest-cov = ">=5,<6"
+ruff = ">=0.11,<1"
+pyproject-appimage = ">=4.2,<5"
+
+[tool.pyproject-appimage]
+script = "gills"
+output = "Gills.AppImage"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "S"]
+ignore = ["E501", "S101", "S603", "S607"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S"]

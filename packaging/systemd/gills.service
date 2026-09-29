@@ -1,0 +1,21 @@
+[Unit]
+Description=Upstream repository watcher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=gills
+Group=gills
+StateDirectory=/var/lib/gills
+UMask=0077
+ExecStart=/usr/bin/gills --config /etc/gills/config.yml check
+EnvironmentFile=-/etc/gills/gills.env
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/lib/gills
+
+[Install]
+WantedBy=multi-user.target

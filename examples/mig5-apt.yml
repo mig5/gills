@@ -1,0 +1,51 @@
+# Configuration format version; the application remains version 0.1.0.
+version: 1
+# Persistent SQLite state path, relative to this configuration file.
+state_dir: ./state-mig5-apt
+# Queue and deliver notifications during check; false also pauses pending retries.
+notify: true
+
+watches:
+  # Stable unique identifier for state and notification routing.
+  - name: mig5-apt
+    # Repository metadata format.
+    type: apt
+    # Names from the top-level destinations mapping, e.g. [builds, email].
+    # Empty or omitted means no notifications for this watch.
+    destinations: []
+    # Secure defaults: HTTPS with validated certificates and public IP addresses.
+    # Enable private/LAN/loopback repositories only for this watch if required.
+    allow_private_networks: false
+    # Separate opt-in for plain HTTP; HTTPS certificates are always validated.
+    allow_http: false
+    # APT root containing dists/.
+    url: https://apt.mig5.net/
+    # Debian suite to monitor; add other published suites here if required.
+    suites: [trixie]
+    # Repository component within each suite.
+    components: [main]
+    # Binary target architecture; architecture-independent packages also qualify.
+    architectures: [amd64]
+    # Monitor published installable packages.
+    kinds: [binary]
+    filters:
+      # Exact binary package names; globs are also accepted. Remove this filter
+      # to watch every binary package in the selected repository/suite/architecture.
+      packages: ['enroll', 'heckle', 'dumptales', 'bouquin']
+      # Apply version regexes to the software version, excluding epoch and revision.
+      # full would include the complete native package version instead.
+      version_field: upstream
+      # Case-insensitive Python regex excluding alpha, beta and release candidates.
+      version_exclude: '(?i)(?:alpha|beta|rc)'
+    # Notify for software version changes and packaging-only revisions alike.
+    # upstream selects software/epoch changes; packaging selects revision changes.
+    version_policy: any
+    # First check establishes a quiet baseline; true announces existing packages too.
+    notify_initial: true
+    # Group by event type, source package name and exact source version.
+    group_by_source: true
+
+# Empty means no notification targets; check still prints results and saves state.
+# Copy definitions from destinations.yml here and select their names in the watch.
+# Notification retries happen on subsequent check invocations.
+destinations: {}

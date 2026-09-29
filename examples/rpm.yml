@@ -1,0 +1,47 @@
+# Configuration format version, independent of the application version.
+version: 1
+# SQLite baseline and notification history; relative to this YAML file.
+state_dir: ./state-rpm
+# notify defaults to true: check queues/delivers to configured destinations.
+# Set notify: false to disable new queueing and pause pending deliveries.
+
+# Each watch covers one concrete RPM repository URL.
+watches:
+  # Stable, unique identifier used in stored state and notification routing.
+  - name: rpm-sources
+    # RPM-MD backend: reads repodata/repomd.xml and its primary package index.
+    type: rpm
+    # Names from the top-level destinations mapping, e.g. [builds, email].
+    # Empty or omitted means no notifications for this watch.
+    destinations: []
+    # Secure defaults: HTTPS with validated certificates and public IP addresses.
+    # Enable private/LAN/loopback repositories only for this watch if required.
+    allow_private_networks: false
+    # Separate opt-in for plain HTTP; HTTPS certificates are always validated.
+    allow_http: false
+    # Replace this placeholder with an actual repository root containing repodata/.
+    # Use a direct SRPM repository for source packages, not a mirrorlist/metalink.
+    url: https://repo.example.org/releases/10/SRPMS/
+    # One descriptive label for this RPM repository; it does not alter the URL.
+    # Use separate watches/URLs for other releases or binary repositories.
+    suites: ['10']
+    # Track source RPMs. Use [binary] or [source, binary] when the index contains them.
+    kinds: [source]
+    # Binary target architectures; source RPMs are still selected with kinds: [source].
+    architectures: [x86_64]
+    # All supplied filter rules must match; entries within a list are alternatives.
+    filters:
+      # Source package names or case-sensitive globs. Omit to include all sources.
+      sources: ['php*']
+      # Python regex: (?i) ignores case; reject versions containing alpha, beta or rc.
+      # version_field defaults to full, so this checks epoch:version-release.
+      # Set version_field: upstream to test only version, excluding epoch/release.
+      version_exclude: '(?i)(alpha|beta|rc)'
+    # Other defaults: version_policy: any (including packaging-only updates),
+    # notify_initial: false (quiet first baseline),
+    # group_by_source: true (group by event type, source name and exact source version).
+
+# Named notification destinations (email, webhook, slack, signal or stdout).
+# Empty means no delivery targets; check still prints results and saves its baseline.
+# See destinations.yml for examples to place under this key.
+destinations: {}

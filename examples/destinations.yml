@@ -1,0 +1,36 @@
+# Copy the desired entries under the top-level destinations: in your complete config.
+# This file is a snippet, not automatically loaded. In each watch, select names with
+# destinations: [builds, email] (for example). Definitions do not select watches.
+# URLs, tokens, credentials and phone numbers are supplied via environment variables.
+destinations:
+  builds:
+    type: webhook
+    url_env: BUILD_WEBHOOK_URL
+    secret_env: BUILD_WEBHOOK_SECRET
+    # Optional JSON object, e.g. {"Authorization":"Bearer ..."}
+    headers_env: BUILD_WEBHOOK_HEADERS
+    events: [package.added, package.updated, package.repacked]
+  slack:
+    type: slack
+    url_env: SLACK_WEBHOOK_URL
+    digest_seconds: 300
+  signal:
+    type: signal
+    url_env: SIGNAL_SEND_URL  # Complete URL, e.g. http://signal:8080/v2/send
+    # This example explicitly permits a local, plain-HTTP Signal service.
+    # Set both false for a public HTTPS service. TLS validation cannot be disabled.
+    allow_private_networks: true
+    allow_http: true
+    number_env: SIGNAL_NUMBER
+    recipients: ['+61000000000']
+    events: [repository.error, repository.recovered, readiness.timeout]
+  email:
+    type: email
+    host: smtp.example.org
+    port: 587
+    tls: starttls
+    username_env: SMTP_USERNAME
+    password_env: SMTP_PASSWORD
+    from: gills@example.org
+    to: [builds@example.org]
+    digest_seconds: 600

@@ -1,0 +1,23 @@
+Source: gills
+Section: admin
+Priority: optional
+Maintainer: Miguel Jacq <mig@mig5.net>
+Rules-Requires-Root: no
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-python,
+ pybuild-plugin-pyproject,
+ python3-all,
+ python3-yaml,
+ python3-poetry-core,
+ python3-debian,
+ python3-defusedxml, python3-zstandard
+Standards-Version: 4.6.2
+Homepage: https://git.mig5.net/mig5/gills
+
+Package: gills
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-yaml, python3-debian, python3-defusedxml, python3-zstandard
+Description: Watch APT and RPM repositories for package changes
+ Check upstream package metadata and deliver configured notifications.
+ Supports source capture, version filters and SQLite-backed change tracking.
