@@ -105,7 +105,9 @@ def test_only_check_and_prune_are_commands():
 
     from gills.cli import parser
 
-    commands = next(a for a in parser()._actions if isinstance(a, argparse._SubParsersAction))
+    commands = next(
+        a for a in parser()._actions if isinstance(a, argparse._SubParsersAction)
+    )
     assert set(commands.choices) == {"check", "prune"}
 
 
@@ -118,7 +120,9 @@ def test_dry_run_creates_no_state_or_notifications(repo, tmp_path, monkeypatch, 
         tmp_path / "preview.yml",
         repo,
         state_dir,
-        destinations={"hook": {"type": "webhook", "url": "https://example.invalid/unused"}},
+        destinations={
+            "hook": {"type": "webhook", "url": "https://example.invalid/unused"}
+        },
     )
 
     def forbidden(*args, **kwargs):
@@ -132,7 +136,9 @@ def test_dry_run_creates_no_state_or_notifications(repo, tmp_path, monkeypatch, 
     assert not list(tmp_path.rglob("*.sqlite3"))
 
 
-def test_check_implicitly_delivers_and_honours_notify(repo, tmp_path, monkeypatch, capsys):
+def test_check_implicitly_delivers_and_honours_notify(
+    repo, tmp_path, monkeypatch, capsys
+):
     from gills import notify
 
     repo["publish"]()
@@ -141,7 +147,9 @@ def test_check_implicitly_delivers_and_honours_notify(repo, tmp_path, monkeypatc
         repo,
         tmp_path / "state",
         notify=False,
-        destinations={"hook": {"type": "webhook", "url": "https://example.invalid/unused"}},
+        destinations={
+            "hook": {"type": "webhook", "url": "https://example.invalid/unused"}
+        },
     )
     sent = []
     monkeypatch.setattr(notify, "send", lambda d, b, c: sent.append(b))
@@ -172,7 +180,9 @@ def test_disabled_destination_pauses_existing_retry(repo, config, monkeypatch):
     monkeypatch.setattr(notify, "send", fail)
     assert notify.dispatch(state, config, 100)["failed_batches"] == 1
     config["destinations"]["hook"]["enabled"] = False
-    monkeypatch.setattr(notify, "send", lambda *args: pytest.fail("disabled delivery attempted"))
+    monkeypatch.setattr(
+        notify, "send", lambda *args: pytest.fail("disabled delivery attempted")
+    )
     assert notify.dispatch(state, config, 200)["failed_batches"] == 0
 
 
@@ -184,19 +194,40 @@ def test_prune_without_database_is_noop(repo, tmp_path, capsys):
     assert not state_dir.exists()
 
 
-def test_existing_v1_database_migrates_without_losing_baseline(repo, config):
+@pytest.fixture
+def sqlite_without_drop_column(monkeypatch):
+    import sqlite3
+
+    original_connect = sqlite3.connect
+
+    class LegacyConnection(sqlite3.Connection):
+        def execute(self, sql, *args, **kwargs):
+            if "DROP COLUMN" in sql.upper():
+                raise sqlite3.OperationalError('near "DROP": syntax error')
+            return super().execute(sql, *args, **kwargs)
+
+    def connect(*args, **kwargs):
+        kwargs["factory"] = LegacyConnection
+        return original_connect(*args, **kwargs)
+
+    monkeypatch.setattr(sqlite3, "connect", connect)
+
+
+def test_existing_v1_database_migrates_without_losing_baseline(
+    repo, config, sqlite_without_drop_column
+):
     import sqlite3
 
     state = State(config["state_dir"])
     repo["publish"]()
     assert check(state, config, config["watches"][0])["ok"]
-    before = state.watch("php")["snapshot"]
+    before = state.watch("php")
     with state.db:
         state.db.execute("ALTER TABLE watches ADD COLUMN signers TEXT")
         state.db.execute("PRAGMA user_version=1")
     state.close()
     migrated = State(config["state_dir"])
-    assert migrated.watch("php")["snapshot"] == before
+    assert migrated.watch("php") == before
     assert "signers" not in migrated.watch("php")
     assert migrated.db.execute("PRAGMA user_version").fetchone()[0] == 2
     assert check(migrated, config, config["watches"][0])["events"] == 0
@@ -205,7 +236,9 @@ def test_existing_v1_database_migrates_without_losing_baseline(repo, config):
         assert db.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
 
 
-def test_dry_run_leaves_legacy_database_unmigrated(repo, config, tmp_path, capsys):
+def test_dry_run_leaves_legacy_database_unmigrated(
+    repo, config, tmp_path, capsys, sqlite_without_drop_column
+):
     from pathlib import Path
 
     state = State(config["state_dir"])
@@ -229,7 +262,10 @@ def test_invalid_watch_destination_selection(repo, tmp_path, selection):
     from gills.model import GillsError
 
     path = write_config(
-        tmp_path / "config.yml", repo, tmp_path / "state", destinations={"hook": {"type": "stdout"}}
+        tmp_path / "config.yml",
+        repo,
+        tmp_path / "state",
+        destinations={"hook": {"type": "stdout"}},
     )
     data = yaml.safe_load(path.read_text())
     data["watches"][0]["destinations"] = selection

@@ -31,13 +31,20 @@ def test_independent_retries(repo, config, monkeypatch):
             raise RuntimeError("private secret must not leak")
 
     monkeypatch.setattr(notify, "send", send)
-    assert notify.dispatch(state, config, 100) == {"delivered_batches": 1, "failed_batches": 1}
+    assert notify.dispatch(state, config, 100) == {
+        "delivered_batches": 1,
+        "failed_batches": 1,
+    }
     assert len(calls) == 2
     assert notify.dispatch(state, config, 110)["failed_batches"] == 0
-    error = state.db.execute("SELECT last_error FROM batches WHERE state='pending'").fetchone()[0]
+    error = state.db.execute(
+        "SELECT last_error FROM batches WHERE state='pending'"
+    ).fetchone()[0]
     assert "private secret" not in error
     monkeypatch.setattr(
-        notify, "send", lambda d, b, c: calls.append((d["label"], b["id"], b["events"][0]["id"]))
+        notify,
+        "send",
+        lambda d, b, c: calls.append((d["label"], b["id"], b["events"][0]["id"])),
     )
     assert notify.dispatch(state, config, 131)["delivered_batches"] == 1
     assert calls[-1] == next(call for call in calls[:2] if call[0] == "bad")
@@ -167,7 +174,9 @@ def test_watch_routes_only_to_selected_destinations(repo, config, monkeypatch):
     second = copy.deepcopy(first)
     second.update(name="other", destinations=["two"])
     config["watches"].append(second)
-    config["destinations"] = {name: {"type": "stdout"} for name in ["one", "two", "unused"]}
+    config["destinations"] = {
+        name: {"type": "stdout"} for name in ["one", "two", "unused"]
+    }
     state = State(config["state_dir"])
     repo["publish"]()
     for watch in config["watches"]:
@@ -202,7 +211,16 @@ def test_health_event_routing(config, selection):
     event = {"id": "health", "watch": watch["name"], "type": "repository.error"}
     state.db.execute(
         "INSERT INTO events(id,watch,type,payload,state,observed,ready_at,scope) VALUES(?,?,?,?,?,?,?,?)",
-        ("health", watch["name"], "repository.error", json.dumps(event), "ready", 1, 1, "test"),
+        (
+            "health",
+            watch["name"],
+            "repository.error",
+            json.dumps(event),
+            "ready",
+            1,
+            1,
+            "test",
+        ),
     )
     state.route(event, config)
     assert state.db.execute("SELECT count(*) FROM deliveries").fetchone()[0] == (

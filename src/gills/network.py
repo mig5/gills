@@ -12,7 +12,9 @@ from .model import GillsError
 
 def validate_url(value, policy):
     try:
-        if not isinstance(value, str) or any(ord(c) <= 32 or ord(c) == 127 for c in value):
+        if not isinstance(value, str) or any(
+            ord(c) <= 32 or ord(c) == 127 for c in value
+        ):
             raise ValueError
         parsed = urllib.parse.urlsplit(value)
         if (
@@ -91,11 +93,13 @@ class SafeHTTPHandler(urllib.request.HTTPHandler):
 
     def connection(self, host, **kwargs):
         connection = http.client.HTTPConnection(host, **kwargs)
-        connection._create_connection = lambda address, timeout, source_address=None: connect(
-            address,
-            timeout,
-            source_address,
-            allow_private=self.policy.get("allow_private_networks", False),
+        connection._create_connection = (
+            lambda address, timeout, source_address=None: connect(
+                address,
+                timeout,
+                source_address,
+                allow_private=self.policy.get("allow_private_networks", False),
+            )
         )
         return connection
 
@@ -114,11 +118,13 @@ class SafeHTTPSHandler(urllib.request.HTTPSHandler):
         connection = http.client.HTTPSConnection(
             host, context=ssl.create_default_context(), **kwargs
         )
-        connection._create_connection = lambda address, timeout, source_address=None: connect(
-            address,
-            timeout,
-            source_address,
-            allow_private=self.policy.get("allow_private_networks", False),
+        connection._create_connection = (
+            lambda address, timeout, source_address=None: connect(
+                address,
+                timeout,
+                source_address,
+                allow_private=self.policy.get("allow_private_networks", False),
+            )
         )
         return connection
 

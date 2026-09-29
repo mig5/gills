@@ -33,7 +33,14 @@ def test_prune_preserves_baseline_pending_work_and_recent_delivery(repo, config)
             if delivery:
                 state.db.execute(
                     "INSERT INTO batches(id,destination,payload,state,next_attempt,delivered_at) VALUES(?,?,?,?,?,?)",
-                    (name, "hook", json.dumps({"events": [event]}), batch, 10, delivered),
+                    (
+                        name,
+                        "hook",
+                        json.dumps({"events": [event]}),
+                        batch,
+                        10,
+                        delivered,
+                    ),
                 )
                 state.db.execute(
                     "INSERT INTO deliveries(event_id,destination,batch_id,state) VALUES(?,?,?,?)",
@@ -44,7 +51,11 @@ def test_prune_preserves_baseline_pending_work_and_recent_delivery(repo, config)
     (state.root / "cache/old").write_text("legacy")
     with state.lock():
         result = state.prune(100)
-    assert result == {"removed_events": 3, "removed_deliveries": 2, "removed_batches": 2}
+    assert result == {
+        "removed_events": 3,
+        "removed_deliveries": 2,
+        "removed_batches": 2,
+    }
     assert {r[0] for r in state.db.execute("SELECT id FROM events")} == {
         "waiting",
         "retry",

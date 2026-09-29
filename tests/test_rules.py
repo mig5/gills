@@ -20,7 +20,13 @@ def pkg(version, name="php8.4", arch="source", checksum="a"):
 
 
 @pytest.mark.parametrize(
-    "a,b", [("1.0~rc1-1", "1.0-1"), ("1.9-1", "1.10-1"), ("1:1-1", "2:0-1"), ("1.0-2", "1.0-10")]
+    "a,b",
+    [
+        ("1.0~rc1-1", "1.0-1"),
+        ("1.9-1", "1.10-1"),
+        ("1:1-1", "2:0-1"),
+        ("1.0-2", "1.0-10"),
+    ],
 )
 def test_debian_order(a, b):
     assert compare(a, b, "apt") < 0
@@ -77,7 +83,9 @@ def test_downgrade_and_removal(config):
     w["events"].append("package.removed")
     assert changes([pkg("2")], [pkg("1")], w)[0]["type"] == "package.downgraded"
     assert changes([pkg("2")], [], w)[0]["type"] == "package.removed"
-    assert all(e["type"] != "package.removed" for e in changes([pkg("1")], [pkg("2")], w))
+    assert all(
+        e["type"] != "package.removed" for e in changes([pkg("1")], [pkg("2")], w)
+    )
 
 
 def test_older_version_added_to_multiversion_repo(config):

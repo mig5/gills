@@ -28,7 +28,11 @@ def test_rpm_primary_and_source_mapping(webroot, config):
     result = rpm.scan(w, Client(config, config["state_dir"], config["watches"][0]))
     assert len(result.packages) == 2
     assert result.packages[0].source == "php"
-    assert result.packages[0].source_version == result.packages[1].version == "0:8.4.2-1.el10"
+    assert (
+        result.packages[0].source_version
+        == result.packages[1].version
+        == "0:8.4.2-1.el10"
+    )
 
 
 @pytest.mark.parametrize("extension", ["gz", "xz", "bz2", "zst", ""])

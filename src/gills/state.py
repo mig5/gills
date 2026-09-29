@@ -50,14 +50,18 @@ class State:
         )
         if copy_from is not None and Path(copy_from).is_file():
             # Read the real baseline without opening it for schema setup or writes.
-            source = sqlite3.connect(Path(copy_from).resolve().as_uri() + "?mode=ro", uri=True)
+            source = sqlite3.connect(
+                Path(copy_from).resolve().as_uri() + "?mode=ro", uri=True
+            )
             try:
                 source.backup(self.db)
             finally:
                 source.close()
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA foreign_keys=ON")
-        self.db.execute("PRAGMA journal_mode=MEMORY" if memory else "PRAGMA journal_mode=WAL")
+        self.db.execute(
+            "PRAGMA journal_mode=MEMORY" if memory else "PRAGMA journal_mode=WAL"
+        )
         self.db.execute("PRAGMA synchronous=FULL")
         version = self.db.execute("PRAGMA user_version").fetchone()[0]
         if version not in (0, 1, 2):
@@ -65,9 +69,31 @@ class State:
         if version == 1:
             with self.db:
                 self.db.execute("BEGIN IMMEDIATE")
-                columns = {row[1] for row in self.db.execute("PRAGMA table_info(watches)")}
+                columns = {
+                    row[1] for row in self.db.execute("PRAGMA table_info(watches)")
+                }
                 if "signers" in columns:
-                    self.db.execute("ALTER TABLE watches DROP COLUMN signers")
+                    # Older distro SQLite libraries lack ALTER TABLE DROP COLUMN.
+                    # Rebuild inside this transaction, preserving all baseline/health fields.
+                    # No other tables reference watches with a foreign key.
+                    self.db.execute(
+                        """CREATE TABLE watches_v2 (
+                        name TEXT PRIMARY KEY, scope TEXT NOT NULL, snapshot TEXT,
+                        releases TEXT, generation INTEGER NOT NULL DEFAULT 0,
+                        failures INTEGER NOT NULL DEFAULT 0, last_checked REAL,
+                        last_success REAL, last_error TEXT,
+                        error_notified INTEGER NOT NULL DEFAULT 0)"""
+                    )
+                    self.db.execute(
+                        """INSERT INTO watches_v2
+                        (name,scope,snapshot,releases,generation,failures,
+                         last_checked,last_success,last_error,error_notified)
+                        SELECT name,scope,snapshot,releases,generation,failures,
+                               last_checked,last_success,last_error,error_notified
+                        FROM watches"""
+                    )
+                    self.db.execute("DROP TABLE watches")
+                    self.db.execute("ALTER TABLE watches_v2 RENAME TO watches")
                 # Preserve history but retire undelivered signer alerts from the old version.
                 self.db.execute(
                     "UPDATE deliveries SET state='cancelled' WHERE event_id IN (SELECT id FROM events WHERE type='signer.changed') AND batch_id IS NULL"
@@ -76,14 +102,18 @@ class State:
                     "SELECT id,payload FROM batches WHERE state='pending'"
                 ).fetchall():
                     batch = json.loads(row["payload"])
-                    retained = [e for e in batch["events"] if e["type"] != "signer.changed"]
+                    retained = [
+                        e for e in batch["events"] if e["type"] != "signer.changed"
+                    ]
                     if len(retained) != len(batch["events"]):
                         # Requeue other events instead of changing a previously attempted batch body.
                         self.db.execute(
-                            "UPDATE batches SET state='cancelled' WHERE id=?", (row["id"],)
+                            "UPDATE batches SET state='cancelled' WHERE id=?",
+                            (row["id"],),
                         )
                         self.db.execute(
-                            "UPDATE deliveries SET state='cancelled' WHERE batch_id=?", (row["id"],)
+                            "UPDATE deliveries SET state='cancelled' WHERE batch_id=?",
+                            (row["id"],),
                         )
                         for event in retained:
                             self.db.execute(
@@ -124,7 +154,9 @@ class State:
     def route(self, event, config):
         if not config.get("notify", True):
             return
-        watch = next((w for w in config["watches"] if w["name"] == event["watch"]), None)
+        watch = next(
+            (w for w in config["watches"] if w["name"] == event["watch"]), None
+        )
         if watch is None:
             return
         for name in set(watch.get("destinations", [])):
@@ -197,7 +229,9 @@ class State:
                 "SELECT destination,state,count(*) AS count FROM deliveries GROUP BY destination,state"
             )
         ]
-        waiting = self.db.execute("SELECT count(*) FROM events WHERE state='waiting'").fetchone()[0]
+        waiting = self.db.execute(
+            "SELECT count(*) FROM events WHERE state='waiting'"
+        ).fetchone()[0]
         return {"watches": watches, "deliveries": deliveries, "waiting": waiting}
 
 
@@ -207,7 +241,9 @@ def lock_directory(root):
         try:
             fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise GillsError("Another gills process is using this state directory") from exc
+            raise GillsError(
+                "Another gills process is using this state directory"
+            ) from exc
         try:
             yield
         finally:

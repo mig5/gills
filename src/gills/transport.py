@@ -50,14 +50,19 @@ class RestrictedRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         validate_url(newurl, self.policy)
         old, new = urllib.parse.urlsplit(req.full_url), urllib.parse.urlsplit(newurl)
-        if new.scheme not in ("http", "https") or (old.scheme == "https" and new.scheme != "https"):
+        if new.scheme not in ("http", "https") or (
+            old.scheme == "https" and new.scheme != "https"
+        ):
             raise FetchError("Unsafe HTTP redirect refused")
         if req.get_method() != "GET":
             raise FetchError("Notification redirects are refused")
         redirected = super().redirect_request(req, fp, code, msg, headers, newurl)
         if (old.scheme, old.netloc) != (new.scheme, new.netloc):
             # Authentication headers must never follow cross-origin redirects.
-            redirected.headers = {"User-agent": "gills/0.1.0", "Accept-encoding": "identity"}
+            redirected.headers = {
+                "User-agent": "gills/0.1.0",
+                "Accept-encoding": "identity",
+            }
         return redirected
 
 
@@ -117,7 +122,9 @@ class Client:
             },
         )
         try:
-            return self.opener.open(req, timeout=self.timeout)  # noqa: S310 -- HTTP(S) validated above and on redirects
+            return self.opener.open(
+                req, timeout=self.timeout
+            )  # noqa: S310 -- HTTP(S) validated above and on redirects
         except urllib.error.HTTPError as exc:
             # Never expose URLs: webhook paths and query strings can be secrets.
             raise FetchError(f"HTTP {exc.code}", exc.code) from exc
@@ -134,7 +141,9 @@ class Client:
         if len(data) > self.limit:
             raise FetchError("Index exceeds configured size limit")
         if size is not None and len(data) != size:
-            raise IntegrityError("Repository index size mismatch; publication may be in progress")
+            raise IntegrityError(
+                "Repository index size mismatch; publication may be in progress"
+            )
         if expected:
             if hashlib.sha256(data).hexdigest() != expected:
                 raise IntegrityError(
@@ -145,14 +154,20 @@ class Client:
 
 def _checksum(value):
     if len(value) != 64 or any(c not in "0123456789abcdef" for c in value):
-        raise IntegrityError("Missing or invalid SHA256 checksum in repository metadata")
+        raise IntegrityError(
+            "Missing or invalid SHA256 checksum in repository metadata"
+        )
 
 
 def decompress(data, path, limit):
     factory = next(
         (
             f
-            for suffix, f in ((".xz", lzma.LZMAFile), (".gz", gzip.open), (".bz2", bz2.BZ2File))
+            for suffix, f in (
+                (".xz", lzma.LZMAFile),
+                (".gz", gzip.open),
+                (".bz2", bz2.BZ2File),
+            )
             if path.endswith(suffix)
         ),
         None,

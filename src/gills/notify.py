@@ -58,23 +58,36 @@ def send(destination, batch, config):
         if tls == "ssl":
             kwargs["context"] = ssl.create_default_context()
         with factory(
-            destination["host"], destination.get("port", 465 if tls == "ssl" else 587), **kwargs
+            destination["host"],
+            destination.get("port", 465 if tls == "ssl" else 587),
+            **kwargs,
         ) as smtp:
             if tls == "starttls":
                 smtp.starttls(context=ssl.create_default_context())
             if destination.get("username_env"):
-                smtp.login(secret(destination["username_env"]), secret(destination["password_env"]))
+                smtp.login(
+                    secret(destination["username_env"]),
+                    secret(destination["password_env"]),
+                )
             refused = smtp.send_message(message)
             if refused:
-                raise GillsError("SMTP refused one or more recipients; batch will retry")
+                raise GillsError(
+                    "SMTP refused one or more recipients; batch will retry"
+                )
         return
-    target = secret(destination["url_env"]) if destination.get("url_env") else destination["url"]
+    target = (
+        secret(destination["url_env"])
+        if destination.get("url_env")
+        else destination["url"]
+    )
     headers = headers_from_env(destination.get("headers_env"))
     if kind == "slack":
         # Plain text blocks prevent untrusted repository strings becoming mentions.
         payload = {
             "text": f"Gills: {len(batch['events'])} repository event(s)",
-            "blocks": [{"type": "section", "text": {"type": "plain_text", "text": body[:2900]}}],
+            "blocks": [
+                {"type": "section", "text": {"type": "plain_text", "text": body[:2900]}}
+            ],
         }
     elif kind == "signal":
         payload = {
@@ -85,7 +98,9 @@ def send(destination, batch, config):
     else:
         payload = batch
     raw = canonical(payload).encode()
-    headers.update({"Content-Type": "application/json", "X-Gills-Delivery": batch["id"]})
+    headers.update(
+        {"Content-Type": "application/json", "X-Gills-Delivery": batch["id"]}
+    )
     if destination.get("secret_env"):
         signature = hmac.new(
             secret(destination["secret_env"]).encode(), raw, hashlib.sha256
@@ -111,7 +126,10 @@ def dispatch(state, config, now=None):
                 "SELECT e.payload,e.ready_at FROM deliveries d JOIN events e ON e.id=d.event_id WHERE d.destination=? AND d.state='pending' AND d.batch_id IS NULL AND e.state='ready' AND e.ready_at<=? ORDER BY e.ready_at,e.id LIMIT 100",
                 (name, now),
             ).fetchall()
-            if not rows or rows[0]["ready_at"] + destination.get("digest_seconds", 0) > now:
+            if (
+                not rows
+                or rows[0]["ready_at"] + destination.get("digest_seconds", 0) > now
+            ):
                 continue
             if not destination.get("digest_seconds"):
                 groups = [[row] for row in rows]
@@ -120,7 +138,12 @@ def dispatch(state, config, now=None):
             for group in groups:
                 batch_id = str(uuid.uuid4())
                 events = [json.loads(row["payload"]) for row in group]
-                batch = {"schema_version": 1, "id": batch_id, "created_at": now, "events": events}
+                batch = {
+                    "schema_version": 1,
+                    "id": batch_id,
+                    "created_at": now,
+                    "events": events,
+                }
                 db.execute(
                     "INSERT INTO batches(id,destination,payload,next_attempt) VALUES(?,?,?,?)",
                     (batch_id, name, canonical(batch), now),
@@ -162,6 +185,9 @@ def dispatch(state, config, now=None):
                     "UPDATE batches SET state='delivered',attempts=attempts+1,last_error=NULL,delivered_at=? WHERE id=?",
                     (now, row["id"]),
                 )
-                db.execute("UPDATE deliveries SET state='delivered' WHERE batch_id=?", (row["id"],))
+                db.execute(
+                    "UPDATE deliveries SET state='delivered' WHERE batch_id=?",
+                    (row["id"],),
+                )
             delivered += 1
     return {"delivered_batches": delivered, "failed_batches": failed}

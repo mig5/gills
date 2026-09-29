@@ -85,16 +85,20 @@ def check(state, config, watch, now=None, dry_run=False):
                     if (
                         new_event["type"] == pending_event["type"]
                         and new_event.get("source") == pending_event.get("source")
-                        and new_event.get("source_version") == pending_event.get("source_version")
+                        and new_event.get("source_version")
+                        == pending_event.get("source_version")
                     ):
                         merged = {
-                            digest(c): c for c in pending_event["changes"] + new_event["changes"]
+                            digest(c): c
+                            for c in pending_event["changes"] + new_event["changes"]
                         }
                         pending_event["changes"] = list(merged.values())
                         new_events.remove(new_event)
         waiting_updates = []
         for event, row in pending + [
-            (event, None) for event in new_events if event["type"].startswith("package.")
+            (event, None)
+            for event in new_events
+            if event["type"].startswith("package.")
         ]:
             missing = missing_requirements(event, snapshot.packages, watch)
             event["missing"] = missing
@@ -120,9 +124,13 @@ def check(state, config, watch, now=None, dry_run=False):
                     )
                 )
                 timed_out = True
-            event.pop("verified_signers", None)  # Remove legacy fields from pending events.
+            event.pop(
+                "verified_signers", None
+            )  # Remove legacy fields from pending events.
             waiting_updates.append((event, row, status, timed_out))
-        package_states = {e["id"]: (status, timeout) for e, _, status, timeout in waiting_updates}
+        package_states = {
+            e["id"]: (status, timeout) for e, _, status, timeout in waiting_updates
+        }
         with state.db:
             if not same_scope:
                 state.db.execute(
@@ -132,12 +140,15 @@ def check(state, config, watch, now=None, dry_run=False):
             for event in new_events:
                 status, timeout = package_states.get(event["id"], ("ready", False))
                 ready_at = now + (
-                    watch["delivery_delay_seconds"] if event["type"].startswith("package.") else 0
+                    watch["delivery_delay_seconds"]
+                    if event["type"].startswith("package.")
+                    else 0
                 )
                 state.add_event(event, watch, config, status, ready_at)
                 if timeout:
                     state.db.execute(
-                        "UPDATE events SET timeout_notified=1 WHERE id=?", (event["id"],)
+                        "UPDATE events SET timeout_notified=1 WHERE id=?",
+                        (event["id"],),
                     )
             for event, row, status, timeout in waiting_updates:
                 if row is None:
@@ -189,7 +200,9 @@ def check(state, config, watch, now=None, dry_run=False):
         )
         failures = (previous["failures"] if previous else 0) + 1
         notified = previous["error_notified"] if previous else 0
-        should_alert = isinstance(exc, IntegrityError) or failures >= watch["failure_threshold"]
+        should_alert = (
+            isinstance(exc, IntegrityError) or failures >= watch["failure_threshold"]
+        )
         with state.db:
             if should_alert and (not notified or previous["last_error"] != message):
                 state.add_event(
@@ -209,6 +222,14 @@ def check(state, config, watch, now=None, dry_run=False):
                 notified = 1
             state.db.execute(
                 "INSERT INTO watches(name,scope,generation,failures,last_checked,last_error,error_notified) VALUES(?,?,?,?,?,?,?) ON CONFLICT(name) DO UPDATE SET generation=excluded.generation,failures=excluded.failures,last_checked=excluded.last_checked,last_error=excluded.last_error,error_notified=excluded.error_notified",
-                (watch["name"], watch["scope"], generation, failures, now, message, notified),
+                (
+                    watch["name"],
+                    watch["scope"],
+                    generation,
+                    failures,
+                    now,
+                    message,
+                    notified,
+                ),
             )
         return {"watch": watch["name"], "ok": False, "error": message}

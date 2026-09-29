@@ -35,7 +35,9 @@ def keys(mapping, allowed, where):
 
 
 def strings(value, where, nonempty=False):
-    if not isinstance(value, list) or any(not isinstance(v, str) or not v for v in value):
+    if not isinstance(value, list) or any(
+        not isinstance(v, str) or not v for v in value
+    ):
         fail(f"{where} must be a list of nonempty strings")
     if nonempty and not value:
         fail(f"{where} cannot be empty")
@@ -139,13 +141,17 @@ def load(path):
             if d.get("url"):
                 url(d["url"], f"{name}.url")
                 validate_url(d["url"], d)
-        if d["type"] == "signal" and (not d.get("number_env") or not d.get("recipients")):
+        if d["type"] == "signal" and (
+            not d.get("number_env") or not d.get("recipients")
+        ):
             fail(f"{name} needs number_env and recipients")
         if d["type"] == "email":
             if not all(d.get(k) for k in ("host", "from", "to")):
                 fail(f"{name} needs host, from, and to")
             if bool(d.get("username_env")) != bool(d.get("password_env")):
-                fail(f"{name} needs both username_env and password_env for authentication")
+                fail(
+                    f"{name} needs both username_env and password_env for authentication"
+                )
             for field in ("host", "from"):
                 if not isinstance(d[field], str) or any(c in d[field] for c in "\r\n"):
                     fail(f"{name}.{field} must be a string without newlines")
@@ -163,7 +169,11 @@ def load(path):
             "watch",
         )
         name = w.get("name", "")
-        if not isinstance(name, str) or not re.fullmatch(r"[a-zA-Z0-9_-]+", name) or name in names:
+        if (
+            not isinstance(name, str)
+            or not re.fullmatch(r"[a-zA-Z0-9_-]+", name)
+            or name in names
+        ):
             fail("watch names must be unique letters/digits/hyphens/underscores")
         names.add(name)
         w.setdefault("destinations", [])
@@ -188,11 +198,17 @@ def load(path):
         ):
             w.setdefault(k, default)
             strings(w[k], f"{name}.{k}", True)
-        if w["type"] == "rpm" and (len(w["suites"]) != 1 or w["components"] != ["main"]):
-            fail("RPM uses one concrete base URL per watch, one suite label, and component main")
+        if w["type"] == "rpm" and (
+            len(w["suites"]) != 1 or w["components"] != ["main"]
+        ):
+            fail(
+                "RPM uses one concrete base URL per watch, one suite label, and component main"
+            )
         for k in ("suites", "components", "architectures"):
             if any(not re.fullmatch(r"[a-zA-Z0-9_.+-]+", v) for v in w[k]):
-                fail(f"unsafe {name}.{k}; use explicit suite/component/architecture names")
+                fail(
+                    f"unsafe {name}.{k}; use explicit suite/component/architecture names"
+                )
         if set(w["kinds"]) - {"source", "binary"}:
             fail(f"invalid {name}.kinds")
         for k, default in (
@@ -212,7 +228,13 @@ def load(path):
         if w["version_policy"] not in ("any", "upstream", "packaging"):
             fail(f"invalid {name}.version_policy")
         w.setdefault(
-            "events", ["package.added", "package.updated", "package.downgraded", "package.repacked"]
+            "events",
+            [
+                "package.added",
+                "package.updated",
+                "package.downgraded",
+                "package.repacked",
+            ],
         )
         strings(w["events"], f"{name}.events")
         if set(w["events"]) - EVENTS:
@@ -226,7 +248,12 @@ def load(path):
         for k in ("packages", "sources", "exclude_packages", "exclude_sources"):
             if k in f:
                 strings(f[k], f"{name}.{k}")
-        for k in ("package_regex", "source_regex", "version_include", "version_exclude"):
+        for k in (
+            "package_regex",
+            "source_regex",
+            "version_include",
+            "version_exclude",
+        ):
             if k in f:
                 try:
                     re.compile(f[k])
@@ -245,7 +272,11 @@ def load(path):
         if f["version_field"] not in ("full", "upstream"):
             fail(f"invalid {name}.version_field")
         r = w.setdefault("readiness", {})
-        keys(r, "require_source binaries architectures suites timeout_seconds", f"{name}.readiness")
+        keys(
+            r,
+            "require_source binaries architectures suites timeout_seconds",
+            f"{name}.readiness",
+        )
         if r:
             r.setdefault("require_source", True)
             boolean(r["require_source"], "readiness.require_source")
@@ -256,9 +287,9 @@ def load(path):
             ):
                 r.setdefault(k, default)
                 strings(r[k], f"readiness.{k}", k != "binaries")
-            if not set(r["suites"]) <= set(w["suites"]) or not set(r["architectures"]) <= set(
-                w["architectures"]
-            ):
+            if not set(r["suites"]) <= set(w["suites"]) or not set(
+                r["architectures"]
+            ) <= set(w["architectures"]):
                 fail("readiness suites/architectures must be included in the watch")
             r.setdefault("timeout_seconds", 3600)
             integer(r["timeout_seconds"], "readiness.timeout_seconds", 1)
@@ -284,7 +315,9 @@ def secret(env_name):
     try:
         value = os.environ[env_name]
     except KeyError as exc:
-        raise GillsError(f"Required environment variable {env_name} is not set") from exc
+        raise GillsError(
+            f"Required environment variable {env_name} is not set"
+        ) from exc
     if not value:
         raise GillsError(f"Environment variable {env_name} is empty")
     return value

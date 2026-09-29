@@ -57,7 +57,8 @@ def repo(webroot):
         sources = (
             f"Package: php8.4\nVersion: {version}\nDirectory: pool/php\nChecksums-Sha256:\n"
             + "".join(
-                f" {sha(data)} {len(data)} {Path(path).name}\n" for path, data in files.items()
+                f" {sha(data)} {len(data)} {Path(path).name}\n"
+                for path, data in files.items()
             )
             + "\n"
         )
@@ -88,7 +89,9 @@ def repo(webroot):
             f"Origin: Test\nSuite: trixie\nCodename: trixie\nDate: {date}\nArchitectures: amd64\nComponents: main\n"
             + ("Acquire-By-Hash: yes\n" if by_hash else "")
             + "SHA256:\n"
-            + "".join(f" {sha(data)} {len(data)} {path}\n" for path, data in indexes.items())
+            + "".join(
+                f" {sha(data)} {len(data)} {path}\n" for path, data in indexes.items()
+            )
         )
         if broken:
             (base / "main/source/Sources.gz").write_bytes(b"broken")
